@@ -34,8 +34,8 @@ typedef Elf64_auxv_t Auxv;
 
 
 int main();
-weak void _init();
-weak void _fini();
+void _init() __attribute__((weak));
+void _fini() __attribute__((weak));
 _Noreturn int __libc_start_main(int (*)(), int, char **,
 	void (*)(), void(*)(), void(*)());
 
@@ -114,12 +114,12 @@ void _start_c(long *p)
     argv = (void*) (STACK_END_ADDR - (max - (unsigned long) argv));
 
     /* ARCH copy of the stack */ //TODO can we use SYS_mremap instead?
-    copied = __memcpy_nostack((STACK_END_ADDR -size), stack_ptr, size);
+    copied = __memcpy_nostack((STACK_END_ADDR -(long)size), stack_ptr, (long)size);
     if (copied != size)
         goto _error;
   
     /* ARCH stack switch */
-    arch_stack_switch(STACK_END_ADDR, size);
+    arch_stack_switch(STACK_END_ADDR, (long)size);
 
     /* unmap previous stack */
     __syscall(SYS_munmap, (max - total_size), total_size);
