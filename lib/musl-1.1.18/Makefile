@@ -111,6 +111,8 @@ obj/crt/crt1.o obj/crt/scrt1.o obj/crt/rcrt1.o obj/ldso/dlstart.lo: $(srcdir)/ar
 
 obj/crt/rcrt1.o: $(srcdir)/ldso/dlstart.c
 
+obj/crt/Scrt1.o: $(srcdir)/crt/crt1.c
+
 obj/crt/Scrt1.o obj/crt/rcrt1.o: CFLAGS_ALL += -fPIC
 
 obj/crt/$(ARCH)/crti.o: $(srcdir)/crt/$(ARCH)/crti.s
