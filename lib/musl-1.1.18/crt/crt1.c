@@ -51,21 +51,17 @@ void _start_c(long *p)
     Auxv *auxv; 
     int i, copied =-1, size =-1, total_size =-1;
     long stack_ptr =-1, max =0;
-	      
-    /* gets the memory for the stack */
     void* stack_addr;
-#ifdef SYS_mmap2
-    stack_addr = (void*) __syscall(SYS_mmap2, STACK_START_ADDR, STACK_SIZE, PROT_READ|PROT_WRITE, (MAP_PRIVATE|MAP_ANON|MAP_FIXED), -1, 0);
-#else
-    stack_addr = (void*) __syscall(SYS_mmap, STACK_START_ADDR, STACK_SIZE, PROT_READ|PROT_WRITE, (MAP_PRIVATE|MAP_ANON|MAP_FIXED), -1, 0);
-#endif
-    if ( stack_addr == ((void*)-1) )
-        goto _error;
-    memset(stack_addr, STACK_SIZE, 0);      
-
+	
     /* ARCH getting the the current stack pointer */
     stack_ptr = arch_stack_get();
-
+    
+    /* check if relocation is not needed. This may happen when the current
+     * stack is below the requested stack address.
+     */
+    if ( STACK_START_ADDR > (unsigned long) stack_ptr)
+        goto _abort_relocation;
+    
     /* getting the current dimension of the stack, using heuristics */
     for (i=0; i<argc; i++) {
         if (max < (long)argv[i])
@@ -79,6 +75,15 @@ void _start_c(long *p)
     for (i=0; (auxv[i].a_type != AT_NULL); i++) {
         if (max < (long)auxv[i].a_un.a_val)
             max = (long) auxv[i].a_un.a_val;
+
+	/* check if we need to abort relocation, for example in case of dynamic 
+	 * linking. The key heuristic is to check if the text section is above
+	 * the new stack address -- as we don't relocate the text section, we 
+	 * need to abort.
+	 */
+        if ( (auxv[i].a_type == AT_ENTRY) &&
+	    (auxv[i].a_un.a_val >= STACK_END_ADDR) )
+		goto _abort_relocation;
     }
     /* align max address */
     max = (max & ~(STACK_PAGE_SIZE -1)) + STACK_PAGE_SIZE;
@@ -87,6 +92,16 @@ void _start_c(long *p)
     /* update expected total mapped size in [stack] */
     total_size = STACK_PAGE_SIZE * (STACK_MAPPED_PAGES + 1 + size/STACK_PAGE_SIZE);
 
+    /* get the memory for the stack */
+#ifdef SYS_mmap2
+    stack_addr = (void*) __syscall(SYS_mmap2, STACK_START_ADDR, STACK_SIZE, PROT_READ|PROT_WRITE, (MAP_PRIVATE|MAP_ANON|MAP_FIXED), -1, 0);
+#else
+    stack_addr = (void*) __syscall(SYS_mmap, STACK_START_ADDR, STACK_SIZE, PROT_READ|PROT_WRITE, (MAP_PRIVATE|MAP_ANON|MAP_FIXED), -1, 0);
+#endif
+    if ( stack_addr == ((void*)-1) )
+        goto _error;
+    memset(stack_addr, STACK_SIZE, 0);     
+    
     /* rewrite pointers for the new stack */
     for (i=0; i<argc; i++)
         argv[i] = (void*) (STACK_END_ADDR - (max - (unsigned long) argv[i])); 
@@ -114,15 +129,17 @@ void _start_c(long *p)
     argv = (void*) (STACK_END_ADDR - (max - (unsigned long) argv));
 
     /* ARCH copy of the stack */ //TODO can we use SYS_mremap instead?
-    copied = __memcpy_nostack((STACK_END_ADDR -(long)size), stack_ptr, (long)size);
+    copied = __memcpy_nostack((STACK_END_ADDR -size), stack_ptr, size);
     if (copied != size)
         goto _error;
   
     /* ARCH stack switch */
-    arch_stack_switch(STACK_END_ADDR, (long)size);
+    arch_stack_switch(STACK_END_ADDR, size);
 
     /* unmap previous stack */
     __syscall(SYS_munmap, (max - total_size), total_size);
+
+_abort_relocation:
 #endif /* STACK_RELOC */
 
     /* now continue to normal startup */
