@@ -30,12 +30,12 @@ llvm_targets = {
 }
 
 # LLVM 3.7.1 SVN URL
-llvm_url = 'http://llvm.org/svn/llvm-project/llvm/tags/RELEASE_371/final'
+llvm_url = 'https://llvm.org/svn/llvm-project/llvm/tags/RELEASE_371/final'
 llvm_revision = '320332'
 # Clang SVN URL
-clang_url = 'http://llvm.org/svn/llvm-project/cfe/tags/RELEASE_371/final'
+clang_url = 'https://llvm.org/svn/llvm-project/cfe/tags/RELEASE_371/final'
 # Binutils 2.27 URL
-binutils_url = 'http://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.bz2'
+binutils_url = 'https://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.bz2'
 
 #================================================
 # ARGUMENT PARSING
