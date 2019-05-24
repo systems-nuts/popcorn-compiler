@@ -43,6 +43,7 @@ START ":\n"
 	retval; })
 
 /* comment the following to disable relocation before libc start */
+//#undef STACK_RELOC
 #define STACK_RELOC
 
 
