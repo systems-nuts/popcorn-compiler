@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include "syscall.h"
+#include <sys/prctl.h>
 #include <elf.h>
 
 #if ULONG_MAX == 0xffffffff
@@ -50,8 +51,7 @@ void _start_c(long *p)
     char **envp = argv+argc+1;
     Auxv *auxv; 
     int i, copied =-1, size =-1, total_size =-1;
-    long stack_ptr =-1, max =0;
-    void* stack_addr;
+    long stack_ptr =-1, max =0, stack_addr =-1;
 	
     /* ARCH getting the the current stack pointer */
     stack_ptr = arch_stack_get();
@@ -92,16 +92,18 @@ void _start_c(long *p)
     /* update expected total mapped size in [stack] */
     total_size = STACK_PAGE_SIZE * (STACK_MAPPED_PAGES + 1 + size/STACK_PAGE_SIZE);
 
+#if 0
     /* get the memory for the stack */
 #ifdef SYS_mmap2
     stack_addr = (void*) __syscall(SYS_mmap2, STACK_START_ADDR, STACK_SIZE, PROT_READ|PROT_WRITE, (MAP_PRIVATE|MAP_ANON|MAP_FIXED), -1, 0);
 #else
     stack_addr = (void*) __syscall(SYS_mmap, STACK_START_ADDR, STACK_SIZE, PROT_READ|PROT_WRITE, (MAP_PRIVATE|MAP_ANON|MAP_FIXED), -1, 0);
 #endif
-    if ( stack_addr == ((void*)-1) )
+    if ( (long) stack_addr < 0 )
         goto _error;
     memset(stack_addr, STACK_SIZE, 0);     
-    
+#endif
+
     /* rewrite pointers for the new stack */
     for (i=0; i<argc; i++)
         argv[i] = (void*) (STACK_END_ADDR - (max - (unsigned long) argv[i])); 
@@ -128,16 +130,28 @@ void _start_c(long *p)
     /* update argv pointer with the new address */
     argv = (void*) (STACK_END_ADDR - (max - (unsigned long) argv));
 
+#if 0
     /* ARCH copy of the stack */ //TODO can we use SYS_mremap instead?
     copied = __memcpy_nostack((STACK_END_ADDR -size), stack_ptr, size);
     if (copied != size)
         goto _error;
+#endif
+    
+    /* try mremap */
+    stack_addr = __syscall(SYS_mremap, (max - total_size), total_size, total_size, (MREMAP_FIXED | MREMAP_MAYMOVE), STACK_END_ADDR - total_size);
+    if ( stack_addr < 0)
+        goto _error;    
   
     /* ARCH stack switch */
     arch_stack_switch(STACK_END_ADDR, size);
 
+#if 0
     /* unmap previous stack */
     __syscall(SYS_munmap, (max - total_size), total_size);
+#endif
+
+    /* tells to the kernel where is the stack */
+    __syscall(SYS_prctl, PR_SET_MM, PR_SET_MM_START_STACK, (STACK_END_ADDR - total_size), 0, 0);
 
 _abort_relocation:
 #endif /* STACK_RELOC */
