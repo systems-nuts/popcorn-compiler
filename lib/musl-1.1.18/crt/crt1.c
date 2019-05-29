@@ -18,6 +18,7 @@
 
 
 #ifdef STACK_RELOC
+#define _GNU_SOURCE
 #include "stack_arch.h"
 #include <string.h>
 #include <unistd.h>
