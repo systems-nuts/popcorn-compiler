@@ -102,35 +102,38 @@ void _start_c(long *p)
     
     /* if VDSO is mapped in, let's move it firstly */
     if (sysinfo_ehdr) {
-	/* VDSO: need to look up the size in the phdr and align it */
-        Elf64_Phdr *ph = (void *)((char *)sysinfo_ehdr + sysinfo_ehdr->e_phoff);
-	size_t base=-1i, end =-1;
-	for (i=0; i<sysinfo_ehdr->e_phnum; i++, ph=(void *)((char *)ph+sysinfo_ehdr->e_phentsize)) {
-	    /* so far, kernel version 5.15 there is only one PT_LOAD, this doesn't support more than one */
-	    if (ph->p_type == PT_LOAD) {
-	      base = (size_t)sysinfo_ehdr + ph->p_offset - ph->p_vaddr;
-	      end = base + ph->p_memsz;
-	      if (end & (STACK_PAGE_SIZE -1))
-		 end = (end & ~(STACK_PAGE_SIZE -1)) + STACK_PAGE_SIZE;
-	    }
-	}
-	if (!base || !end)
-	  goto _malformed_vdso;
+		/* VDSO: need to look up the size in the phdr and align it */
+		Elf64_Phdr *ph = (void *)((char *)sysinfo_ehdr + sysinfo_ehdr->e_phoff);
+		size_t base=-1, end =-1;
+		
+		for (i=0; i<sysinfo_ehdr->e_phnum; i++, ph=(void *)((char *)ph+sysinfo_ehdr->e_phentsize)) {
+			/* so far, kernel version 5.15 there is only one PT_LOAD, this doesn't support more than one */
+			if (ph->p_type == PT_LOAD) {
+				base = (size_t)sysinfo_ehdr + ph->p_offset - ph->p_vaddr;
+				end = base + ph->p_memsz;
+				if (end & (STACK_PAGE_SIZE -1))
+					end = (end & ~(STACK_PAGE_SIZE -1)) + STACK_PAGE_SIZE;
+			}
+		}
+		if (!base || !end)
+			goto _malformed_vdso;
 
-        /* VVAR: it is before the VDSO, get the size by using a macro */
-	vvar_base = base - arch_vvar_get_pagesz();
+		/* VVAR: it is before the VDSO, get the size by using a macro */
+		vvar_base = base - arch_vvar_get_pagesz();
 
-        /* remap VVAR and VDSO together at the end of the rebuilt address space */
-	stack_addr = __syscall(SYS_mremap, vvar_base, (base - vvar_base), (base - vvar_base), (MREMAP_FIXED | MREMAP_MAYMOVE), STACK_END_ADDR - (end- vvar_base));
-	if ( stack_addr < 0)
-	  goto _error;
+		/* remap VVAR and VDSO together at the end of the rebuilt address space */
+		stack_addr = __syscall(SYS_mremap, vvar_base, (base - vvar_base), (base - vvar_base), (MREMAP_FIXED | MREMAP_MAYMOVE), STACK_END_ADDR - (end- vvar_base));
+		if ( stack_addr < 0) {
+			i =1; goto _error;
+		}
 
-	stack_addr = __syscall(SYS_mremap, base, (end - base), (end - base), (MREMAP_FIXED | MREMAP_MAYMOVE), STACK_END_ADDR - (end - base));
-       if ( stack_addr < 0)
-          goto _error;
+		stack_addr = __syscall(SYS_mremap, base, (end - base), (end - base), (MREMAP_FIXED | MREMAP_MAYMOVE), STACK_END_ADDR - (end - base));
+		if ( stack_addr < 0) {
+			i =2; goto _error;
+		}
 	
-        /* update max, size, total size */
-       vdso_size = (end - vvar_base);
+		/* update max, size, total size */
+		vdso_size = (end - vvar_base);
     }
 _malformed_vdso:
 
@@ -141,8 +144,9 @@ _malformed_vdso:
 #else /* SYS_mmap2 */
     stack_addr = (void*) __syscall(SYS_mmap, STACK_START_ADDR - vdso_size, STACK_SIZE, PROT_READ|PROT_WRITE, (MAP_PRIVATE|MAP_ANON|MAP_FIXED), -1, 0);
 #endif /* !SYS_mmap2 */
-    if ( (long) stack_addr < 0 )
-        goto _error;
+    if ( (long) stack_addr < 0 ) {
+		i =3; goto _error;
+	}
     memset(stack_addr, STACK_SIZE, 0);     
 #endif /* STACK_RELOC_USE_MMAP */
     
@@ -179,13 +183,15 @@ _malformed_vdso:
 #if STACK_RELOC_USE_MMAP
     /* ARCH copy of the stack */ //TODO can we use SYS_mremap instead?
     copied = __memcpy_nostack((STACK_END_ADDR - vdso_size -size), stack_ptr, size);
-    if (copied != size)
-        goto _error;
+    if (copied != size) {
+		i =4; goto _error;
+	}
 #else /* STACK_RELOC_USE_MMAP */
     /* try mremap */
     stack_addr = __syscall(SYS_mremap, (max - total_size), total_size, total_size, (MREMAP_FIXED | MREMAP_MAYMOVE), STACK_END_ADDR - vdso_size - total_size);
-    if ( stack_addr < 0)
-        goto _error;
+    if ( stack_addr < 0) {
+		i =4; goto _error;
+	}
 #endif /* !STACK_RELOC_USE_MMAP */
 
 	/* tells to the kernel where is the stack */
@@ -217,7 +223,16 @@ _abort_relocation:
 #ifdef STACK_RELOC
     /* we should reach here only in case of errors */
 _error:
-    /* from src/exit/_Exit.c */
+{
+	char * serror = "crt1.c: _start_c error (0)";
+	serror[24] += i;
+	while (1) {
+		__syscall(SYS_write, serror, strlen(serror));
+		long l, ll=-1; 
+		for (l=0; l<1234567890; l++) ll+=l; l;
+	};
+}
+	/* from src/exit/_Exit.c */
     //int ec =1;
     __syscall(SYS_exit_group, 1); //ec);
     for (;;) __syscall(SYS_exit, 1); //ec);
