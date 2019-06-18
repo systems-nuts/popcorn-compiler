@@ -129,10 +129,10 @@ void _start_c(long *p)
 	}
 	/* align max address */
 	max = (max & ~(STACK_PAGE_SIZE -1)) + STACK_PAGE_SIZE;
-	size = (max - ((unsigned long)stack_ptr & ~(STACK_PAGE_SIZE -1)) );
+	size = (max - ((unsigned long)stack_ptr) ); 
 
 	/* update expected total mapped size in [stack] */
-	total_size = STACK_PAGE_SIZE * (STACK_MAPPED_PAGES + size/STACK_PAGE_SIZE);
+	total_size = STACK_PAGE_SIZE * (STACK_MAPPED_PAGES + (size/STACK_PAGE_SIZE) +1); //it is ok to over estimate this
     
     /* if VDSO is mapped in, let's move it firstly */
     if (sysinfo_ehdr) {
