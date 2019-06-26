@@ -31,9 +31,9 @@ int epoll_ctl(int fd, int op, int fd2, struct epoll_event *ev)
 {
 #ifdef __AARCH64EL__
     struct __epoll_event __ev;
-    __ev.events = (long)ev->events;
-    __ev.data = ev->data.u64;
-    return syscall(SYS_epoll_ctl, fd, op, fd2, __ev);
+    __ev.events = ((unsigned int*)&ev)[0];
+    __ev.data = (unsigned long*)(((unsigned int*)&ev) +1)[0];
+    return syscall(SYS_epoll_ctl, fd, op, fd2, &__ev);
 #else
 	return syscall(SYS_epoll_ctl, fd, op, fd2, ev);
 #endif
@@ -43,7 +43,7 @@ int epoll_pwait(int fd, struct epoll_event *ev, int cnt, int to, const sigset_t 
 {
 #ifdef __AARCH64EL__
     struct __epoll_event __ev;
-    int r = __syscall(SYS_epoll_pwait, fd, __ev, cnt, to, sigs, _NSIG/8);
+    int r = __syscall(SYS_epoll_pwait, fd, &__ev, cnt, to, sigs, _NSIG/8);
     ev->events = __ev.events;
     ev->data.u64 = __ev.data;
 #else
@@ -52,8 +52,8 @@ int epoll_pwait(int fd, struct epoll_event *ev, int cnt, int to, const sigset_t 
     
 #ifdef SYS_epoll_wait
 	if (r==-ENOSYS && !sigs) 
- #if #ifdef __AARCH64EL__
-        r = __syscall(SYS_epoll_wait, fd, __ev, cnt, to);        
+ #ifdef __AARCH64EL__
+        r = __syscall(SYS_epoll_wait, fd, &__ev, cnt, to);        
         ev->events = __ev.events;
         ev->data.u64 = __ev.data;
  #else       
