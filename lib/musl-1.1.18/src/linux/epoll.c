@@ -22,7 +22,7 @@ int epoll_create1(int flags)
 
 #ifdef __AARCH64EL__
 struct __epoll_event {
-    unsigned long event;
+    unsigned long events;
     unsigned long data;
 };
 #endif
@@ -44,8 +44,8 @@ int epoll_pwait(int fd, struct epoll_event *ev, int cnt, int to, const sigset_t 
 #ifdef __AARCH64EL__
     struct __epoll_event __ev;
     int r = __syscall(SYS_epoll_pwait, fd, __ev, cnt, to, sigs, _NSIG/8);
-    ev.events = __ev.events;
-    ev.data.u64 = __ev.data;
+    ev->events = __ev.events;
+    ev->data.u64 = __ev.data;
 #else
     int r = __syscall(SYS_epoll_pwait, fd, ev, cnt, to, sigs, _NSIG/8);
 #endif
@@ -54,8 +54,8 @@ int epoll_pwait(int fd, struct epoll_event *ev, int cnt, int to, const sigset_t 
 	if (r==-ENOSYS && !sigs) 
  #if #ifdef __AARCH64EL__
         r = __syscall(SYS_epoll_wait, fd, __ev, cnt, to);        
-        ev.events = __ev.events;
-        ev.data.u64 = __ev.data;
+        ev->events = __ev.events;
+        ev->data.u64 = __ev.data;
  #else       
         r = __syscall(SYS_epoll_wait, fd, ev, cnt, to);
  #endif
