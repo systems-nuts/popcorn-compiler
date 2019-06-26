@@ -1,3 +1,6 @@
+
+/* updated for Popcorn by Antonio Barbalace, Stevens 2019 */
+
 #include <sys/epoll.h>
 #include <signal.h>
 #include <errno.h>
@@ -17,16 +20,45 @@ int epoll_create1(int flags)
 	return __syscall_ret(r);
 }
 
+#if ARCH == "aarch64"
+struct __epoll_event {
+    unsigned long event;
+    unsigned long data;
+}
+#endif
+
 int epoll_ctl(int fd, int op, int fd2, struct epoll_event *ev)
 {
+#if ARCH == "aarch64"
+    struct __epoll_event __ev;
+    __ev.events = (long)ev->events;
+    __ev.data = ev->data.u64;
+    return syscall(SYS_epoll_ctl, fd, op, fd2, __ev);
+#else
 	return syscall(SYS_epoll_ctl, fd, op, fd2, ev);
+#endif
 }
 
 int epoll_pwait(int fd, struct epoll_event *ev, int cnt, int to, const sigset_t *sigs)
 {
-	int r = __syscall(SYS_epoll_pwait, fd, ev, cnt, to, sigs, _NSIG/8);
+#if ARCH == "aarch64"
+    struct __epoll_event __ev;
+    int r = __syscall(SYS_epoll_pwait, fd, __ev, cnt, to, sigs, _NSIG/8);
+    ev.events = __ev.events;
+    ev.data.u64 = __ev.data;
+#else
+    int r = __syscall(SYS_epoll_pwait, fd, ev, cnt, to, sigs, _NSIG/8);
+#endif
+    
 #ifdef SYS_epoll_wait
-	if (r==-ENOSYS && !sigs) r = __syscall(SYS_epoll_wait, fd, ev, cnt, to);
+	if (r==-ENOSYS && !sigs) 
+ #if ARCH == "aarch64"        
+        r = __syscall(SYS_epoll_wait, fd, __ev, cnt, to);        
+        ev.events = __ev.events;
+        ev.data.u64 = __ev.data;
+ #else       
+        r = __syscall(SYS_epoll_wait, fd, ev, cnt, to);
+ #endif
 #endif
 	return __syscall_ret(r);
 }
