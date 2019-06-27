@@ -1,0 +1,13 @@
+This is a very simple python/GDB script to dump the offset of a struct
+
+Currently used to dump struct stat
+
+1. Compile st.c with your favourite C compiler and library, remember -g
+
+2a. run the dump python/gdb script -- it will output the offsets
+
+2b. alternatively, run the dumpC python/gdb script -- it will write a C program on stdout
+
+3b. copy and paste the program in a C file, compile it with your favourite C compiler and library
+
+4b. run the compiled program -- it will output the offsets
