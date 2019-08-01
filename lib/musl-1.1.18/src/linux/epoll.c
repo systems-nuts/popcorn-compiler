@@ -31,15 +31,10 @@ struct __epoll_event {
 int epoll_ctl(int fd, int op, int fd2, struct epoll_event *ev)
 {
 #ifdef __AARCH64EL__
-
-    int retval; struct __epoll_event __ev; __ev.events=0; __ev.data=0;
+    struct __epoll_event __ev; __ev.events=0; __ev.data=0;
     __ev.events = ((unsigned int*)ev)[0];
     __ev.data = (unsigned long*)((((unsigned int*)ev) +1))[0];
-
-    retval = syscall(SYS_epoll_ctl, fd, op, fd2, &__ev);
-    return retval;
-
-
+    return syscall(SYS_epoll_ctl, fd, op, fd2, &__ev);
 #else
 	return syscall(SYS_epoll_ctl, fd, op, fd2, ev);
 #endif
@@ -48,15 +43,12 @@ int epoll_ctl(int fd, int op, int fd2, struct epoll_event *ev)
 int epoll_pwait(int fd, struct epoll_event *ev, int cnt, int to, const sigset_t *sigs)
 {
 #ifdef __AARCH64EL__
-//	struct __epoll_event __ev; __ev.events=0; __ev.data=0;
 	int i;
 	struct __epoll_event __ev[32];
 	memset(&__ev, 0, sizeof(struct __epoll_event)*32);
 
 	int r = __syscall(SYS_epoll_pwait, fd, &__ev, (cnt > 32) ? 32 : cnt, 
 		to, sigs, _NSIG/8);
- //       ev->events = __ev.events;
-//	((unsigned long*)(((unsigned int*)ev)+1))[0] = __ev.data; //force cast
 
 	for (i=0; (i< 32) && (i< cnt); i++) {
 		ev[i].events = __ev[i].events;
