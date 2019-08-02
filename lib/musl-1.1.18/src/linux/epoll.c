@@ -33,7 +33,7 @@ int epoll_ctl(int fd, int op, int fd2, struct epoll_event *ev)
 #ifdef __AARCH64EL__
     struct __epoll_event __ev; __ev.events=0; __ev.data=0;
     __ev.events = ((unsigned int*)ev)[0];
-    __ev.data = (unsigned long*)((((unsigned int*)ev) +1))[0];
+    __ev.data = ((unsigned long*)((((unsigned int*)ev) +1)))[0];
     return syscall(SYS_epoll_ctl, fd, op, fd2, &__ev);
 #else
 	return syscall(SYS_epoll_ctl, fd, op, fd2, ev);
