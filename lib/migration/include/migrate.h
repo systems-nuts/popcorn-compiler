@@ -29,6 +29,12 @@ enum arch current_arch(void);
 int current_nid(void);
 
 /**
+ * Get the current actived node numbers.
+ * @return the num of nodes that is running
+ */
+int total_act_nodes(void);
+
+/**
  * Check if thread should migrate, and if so, invoke migration.  The optional
  * callback function will be invoked before execution resumes on destination
  * architecture.
