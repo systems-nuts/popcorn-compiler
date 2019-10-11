@@ -142,6 +142,13 @@ int node_available(int nid)
   return ni[nid].status;
 }
 
+int total_act_nodes(void)
+{
+	int i;
+	int num = 0;
+	for(i = 0; i < MAX_POPCORN_NODES; i++) if(ni[i].status) num++;
+	return num;
+}
 enum arch current_arch(void)
 {
 	int nid = popcorn_getnid();
