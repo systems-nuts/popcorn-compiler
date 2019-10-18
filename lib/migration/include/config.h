@@ -45,12 +45,12 @@
 
 /* Use signals to trigger thread migrations.  If set, which signal to use. */
 #ifndef _SIG_MIGRATION
-#define _SIG_MIGRATION 0
+#define _SIG_MIGRATION 1
 #endif
 
 #if _SIG_MIGRATION == 1
 # include <signal.h>
-# define MIGRATE_SIGNAL SIGRTMIN
+# define MIGRATE_SIGNAL SIGRTMIN 
 #endif
 
 /* Dump verbose migration information to a log file. */
