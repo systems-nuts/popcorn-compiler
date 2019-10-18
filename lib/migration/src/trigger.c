@@ -6,7 +6,7 @@
 #include <signal.h>
 #include <assert.h>
 #include "config.h"
-
+#include "migrate.h"
 #if _SIG_MIGRATION == 1
 
 /* Flag set by signal handler indicating a thread should migrate. */
@@ -85,13 +85,14 @@ static void __migrate_sighandler(int sig, siginfo_t *info, void *args)
   // execution to decide whether to call into the migration library.
   // TODO this needs to be set according to the what the OS tells us (maybe in
   // the args argument?)
-  __migrate_flag = 1;
+   __migrate_flag = 1;
 
   // Tell the OS we're requesting this thread migrate.
   // TODO in the real version, the OS should *know* that the thread is to be
   // migrated and does not need to be told.
-  if(syscall(SYS_propose_migration, 0, 1))
-    perror("Could not propose the migration destination for the thread");
+    int my_nid = current_nid();
+    if(syscall(SYS_propose_migration, 0,  (my_nid==0)?1:0))
+     perror("Could not propose the migration destination for the thread");
 }
 
 /*
