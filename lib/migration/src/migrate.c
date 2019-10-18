@@ -226,7 +226,6 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
 #if _CLEAN_CRASH == 1
   int cur_nid = popcorn_getnid();
 #endif
-
   if(!node_available(nid))
   {
     fprintf(stderr, "Destination node is not available!\n");
@@ -264,7 +263,6 @@ __migrate_shim_internal(int nid, void (*callback)(void *), void *callback_data)
 #if _SIG_MIGRATION == 1
       clear_migrate_flag();
 #endif
-
       switch(dst_arch) {
       case ARCH_AARCH64:
         regs_dst.aarch.pc = __migrate_fixup_aarch64;
