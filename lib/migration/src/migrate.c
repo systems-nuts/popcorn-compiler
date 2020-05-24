@@ -188,7 +188,8 @@ struct shim_data {
 static volatile int __hold = 1;
 #endif
 
-#define MUSL_PTHREAD_DESCRIPTOR_SIZE 288
+//What is this?
+#define MUSL_PTHREAD_DESCRIPTOR_SIZE 290  
 
 /* musl-libc's architecture-specific function for setting the TLS pointer */
 int __set_thread_area(void *);
