@@ -17,3 +17,55 @@ The migration library thus provides glue for scheduler policy call-outs, state
 transformation (including a well-known location to bootstrap the runtime) and
 thread migration.
 
+For Unifico specifically, we add the following:
+
+We add as part of the `lib/migration` timing infrastructure to mark the
+time values (through `struct timeval`) for each phase of the migration.
+There are two main functionalities added: a snapshot function and a
+printing function. The snapshot is triggered each time a migration is
+triggered. Then, it is expected that it will be triggered also from the
+application itself, at the predefined points in the code where migration
+is continued. This is because we need to measure the transfer time in
+different time intervals.
+
+An example for a migration x86->arm->x86 follows:
+
+```text
+x86
+* (begin)
+|
+|
+* (migrate)
+------------arm
+			* (continue in arm)
+			|
+			|
+			|
+			* (migrate)
+x86----------
+* (continue in x86)
+|
+|
+|
+* (end)
+```
+
+Essentially, we only want to take snapshots in the "stars". This way, the
+difference between each consecutive snapshot will measure:
+1. Execution on x86 until migration
+2. Transfer time to arm
+3. Execution on arm until migration
+4. Transfer time to x86
+5. Execution on x86 until the end
+
+We also add  an additional userspace flag to control the triggering of
+migration. Previously, `check_migrate` would only consult the `__indicator`
+flag which is set externally by the tracer (the "scheduler" of the migration).
+Now, it also consults a userspace flag that can only be set by the
+application.  This is helpful because we want to precisely trigger migrations
+at specific points in the code, so that our experiments are reproducible. This
+cannot be achieved just by requesting migration through the scheduler, because
+the timing cannot be controlled with respect to the execution of the
+application itself.  Hence, the application at predefined points can set the
+userspace flag, so that even if the scheduler requests a migration earlier, it
+will only happen when the application allows it too.
